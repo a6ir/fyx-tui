@@ -10,6 +10,9 @@ use crate::{
 
 pub fn refresh_directory(app: &mut App) -> Result<()> {
     app.current = dir::read_entries(&app.cwd)?;
+    app.full_entries = app.current.clone();
+    app.filtered = app.full_entries.clone();
+    app.search_query.clear();
 
     app.parent = if let Some(parent) = app.cwd.parent() {
         dir::read_entries(parent).unwrap_or_default()
@@ -23,7 +26,7 @@ pub fn refresh_directory(app: &mut App) -> Result<()> {
 }
 
 pub fn move_selection(app: &mut App, delta: isize) {
-    let len = app.current.len();
+    let len = app.filtered.len();
     if len == 0 {
         app.selected = 0;
         return;
@@ -39,10 +42,10 @@ pub fn jump_top(app: &mut App) {
 }
 
 pub fn jump_bottom(app: &mut App) {
-    if app.current.is_empty() {
+    if app.filtered.is_empty() {
         app.selected = 0;
     } else {
-        app.selected = app.current.len() - 1;
+        app.selected = app.filtered.len() - 1;
     }
 }
 
@@ -75,7 +78,7 @@ pub fn go_parent(app: &mut App) -> Result<bool> {
 }
 
 pub fn selected_entry(app: &App) -> Option<&FsEntry> {
-    app.current.get(app.selected)
+    app.filtered.get(app.selected)
 }
 
 pub fn selected_path(app: &App) -> Option<PathBuf> {
@@ -83,6 +86,11 @@ pub fn selected_path(app: &App) -> Option<PathBuf> {
 }
 
 pub fn request_preview(app: &mut App, ctx: &AppContext) {
+    if !app.preview_enabled {
+        app.preview = String::from("Preview disabled. Press 'p' to enable.");
+        return;
+    }
+
     let Some(path) = selected_path(app) else {
         app.preview = String::from("(empty directory)");
         return;
@@ -97,7 +105,7 @@ pub fn request_preview(app: &mut App, ctx: &AppContext) {
 
 pub fn drain_preview(app: &mut App, ctx: &AppContext) {
     while let Ok(message) = ctx.preview_res_rx.try_recv() {
-        if message.token == app.preview_token {
+        if app.preview_enabled && message.token == app.preview_token {
             app.preview = message.content;
         }
     }
@@ -116,9 +124,9 @@ pub fn sync_scroll(app: &mut App, viewport_rows: usize) {
 }
 
 fn clamp_selection(app: &mut App) {
-    if app.current.is_empty() {
+    if app.filtered.is_empty() {
         app.selected = 0;
-    } else if app.selected >= app.current.len() {
-        app.selected = app.current.len() - 1;
+    } else if app.selected >= app.filtered.len() {
+        app.selected = app.filtered.len() - 1;
     }
 }

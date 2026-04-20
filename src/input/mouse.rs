@@ -35,7 +35,7 @@ pub fn handle_mouse(
             let row_in_list = mouse.row.saturating_sub(current_pane.y + 1) as usize;
             let target_index = app.scroll + row_in_list;
 
-            if target_index < app.current.len() {
+            if target_index < app.filtered.len() {
                 app.selected = target_index;
                 state::request_preview(app, ctx);
 

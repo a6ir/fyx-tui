@@ -6,11 +6,11 @@ pub enum KeyAction {
     MoveUp,
     Enter,
     Parent,
+    SwitchFocus,
     JumpTop,
     JumpBottom,
     StartSearch,
     StartCommand,
-    Quit,
     Escape,
     Backspace,
     Submit,
@@ -20,6 +20,7 @@ pub enum KeyAction {
 
 pub fn map_key(key: KeyEvent) -> KeyAction {
     match key.code {
+        KeyCode::Tab => KeyAction::SwitchFocus,
         KeyCode::Char('j') => KeyAction::MoveDown,
         KeyCode::Char('k') => KeyAction::MoveUp,
         KeyCode::Char('l') => KeyAction::Enter,
@@ -27,7 +28,6 @@ pub fn map_key(key: KeyEvent) -> KeyAction {
         KeyCode::Char('G') => KeyAction::JumpBottom,
         KeyCode::Char('/') => KeyAction::StartSearch,
         KeyCode::Char(':') => KeyAction::StartCommand,
-        KeyCode::Char('q') => KeyAction::Quit,
         KeyCode::Esc => KeyAction::Escape,
         KeyCode::Backspace => KeyAction::Backspace,
         KeyCode::Enter => KeyAction::Submit,
