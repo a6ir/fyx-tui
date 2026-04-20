@@ -1,15 +1,19 @@
 use ratatui::{layout::Rect, Frame};
 
-use crate::{core::app::App, ui::components::list};
+use crate::{
+    core::app::{App, PaneFocus},
+    ui::components::list,
+};
 
 pub fn render(frame: &mut Frame, area: Rect, app: &App) {
     list::render(
         frame,
         area,
         "Current",
-        &app.current,
+        &app.filtered,
         Some(app.selected),
         app.scroll,
         false,
+        app.focus == PaneFocus::Left,
     );
 }

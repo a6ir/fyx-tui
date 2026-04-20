@@ -11,9 +11,8 @@ pub fn draw(frame: &mut Frame, app: &App) {
     let show_command = matches!(app.mode, Mode::Command | Mode::Search);
     let ui_layout = layout::split(frame.size(), show_command);
 
-    panes::parent::render(frame, ui_layout.parent, app);
-    panes::current::render(frame, ui_layout.current, app);
-    panes::preview::render(frame, ui_layout.preview, app);
+    panes::current::render(frame, ui_layout.left, app);
+    panes::preview::render(frame, ui_layout.right, app);
 
     components::status::render(frame, ui_layout.status, app);
 

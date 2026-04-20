@@ -1,6 +1,9 @@
 use ratatui::{layout::Rect, Frame};
 
-use crate::{core::app::App, ui::components::list};
+use crate::{
+    core::app::{App, PaneFocus},
+    ui::components::list,
+};
 
 pub fn render(frame: &mut Frame, area: Rect, app: &App) {
     list::render(
@@ -11,5 +14,6 @@ pub fn render(frame: &mut Frame, area: Rect, app: &App) {
         None,
         0,
         true,
+        app.focus == PaneFocus::Left,
     );
 }

@@ -4,6 +4,10 @@ pub fn border() -> Style {
     Style::default().fg(Color::DarkGray)
 }
 
+pub fn active_border() -> Style {
+    Style::default().fg(Color::Rgb(163, 230, 53))
+}
+
 pub fn selection() -> Style {
     Style::default()
         .fg(Color::Black)

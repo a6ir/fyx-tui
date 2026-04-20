@@ -1,9 +1,8 @@
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
 pub struct UiLayout {
-    pub parent: Rect,
-    pub current: Rect,
-    pub preview: Rect,
+    pub left: Rect,
+    pub right: Rect,
     pub status: Rect,
     pub command: Option<Rect>,
 }
@@ -27,17 +26,12 @@ pub fn split(area: Rect, show_command: bool) -> UiLayout {
 
     let columns = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(25),
-            Constraint::Percentage(35),
-            Constraint::Percentage(40),
-        ])
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(main);
 
     UiLayout {
-        parent: columns[0],
-        current: columns[1],
-        preview: columns[2],
+        left: columns[0],
+        right: columns[1],
         status,
         command,
     }

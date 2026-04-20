@@ -15,12 +15,19 @@ pub fn render(
     selected: Option<usize>,
     scroll: usize,
     dim_content: bool,
+    active: bool,
 ) {
+    let border_style = if active {
+        theme::active_border()
+    } else {
+        theme::border()
+    };
+
     if entries.is_empty() {
         let empty = Paragraph::new("(empty)").block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(theme::border())
+                .border_style(border_style)
                 .title(title),
         );
         frame.render_widget(empty, area);
@@ -43,7 +50,7 @@ pub fn render(
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(theme::border())
+                .border_style(border_style)
                 .title(title),
         )
         .highlight_style(theme::selection())
