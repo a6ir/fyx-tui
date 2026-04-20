@@ -9,8 +9,8 @@ use crate::core::{app::App, mode::Mode};
 
 pub fn render(frame: &mut Frame, area: Rect, app: &App) {
     let text = match app.mode {
-        Mode::Command => format!(":{}", app.command_input),
-        Mode::Search => format!("/{}", app.search_input),
+        Mode::Command => format!(":{}", app.command_buffer),
+        Mode::Search => format!("/{}", app.search_query),
         Mode::Normal => String::new(),
     };
 
