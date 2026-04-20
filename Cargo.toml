@@ -1,0 +1,10 @@
+[package]
+name = "fyx-tui"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ratatui = "0.26"
+crossterm = "0.27"
+anyhow = "1"
+crossbeam-channel = "0.5"

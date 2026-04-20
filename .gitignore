@@ -1,0 +1,28 @@
+# Rust build artifacts
+/target/
+
+# Rust and tooling cache files
+**/*.rs.bk
+
+# Flycheck output
+/target/flycheck*/
+
+# Editor/OS files
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Local environment files (can contain secrets)
+.env
+.env.*
+
+# Local checklist notes
+IMPLEMENTATION_CHECKLIST.md
+
+# Workspace-only metadata
+.github/
