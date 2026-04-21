@@ -26,6 +26,8 @@ pub fn read_entries(path: &Path) -> Result<Vec<FsEntry>> {
             path: dir_entry.path(),
             name,
             is_dir: file_type.is_dir(),
+            size: dir_entry.metadata().map(|m| m.len()).unwrap_or(0),
+            modified: dir_entry.metadata().and_then(|m| m.modified()).ok(),
         });
     }
 
