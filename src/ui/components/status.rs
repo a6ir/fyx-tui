@@ -1,7 +1,7 @@
 use ratatui::{
     layout::Rect,
     text::Line,
-    widgets::{Block, Paragraph},
+    widgets::{Block, Paragraph, Wrap},
     Frame,
 };
 
@@ -11,13 +11,22 @@ use crate::{
 };
 
 pub fn render(frame: &mut Frame, area: Rect, app: &App) {
-    let line = match app.mode {
-        Mode::Normal => format!(" {} | {} | {} ", app.cwd.display(), app.status, app.filtered.len()),
-        Mode::Search => format!(" /{} | {} matches ", app.search_query, app.filtered.len()),
-        Mode::Command => format!(" :{} ", app.command_buffer),
+    let mode = match app.mode {
+        Mode::Normal => "normal",
+        Mode::Search => "search",
+        Mode::Command => "command",
     };
 
+    let line = format!(
+        " {} | items:{} | mode:{} | {} ",
+        app.cwd.display(),
+        app.filtered.len(),
+        mode,
+        app.status
+    );
+
     let status = Paragraph::new(Line::raw(line))
+        .wrap(Wrap { trim: true })
         .style(theme::status())
         .block(Block::default());
     frame.render_widget(status, area);

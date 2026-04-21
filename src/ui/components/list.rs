@@ -1,7 +1,7 @@
 use ratatui::{
     layout::Rect,
     text::Line,
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
     Frame,
 };
 
@@ -24,12 +24,14 @@ pub fn render(
     };
 
     if entries.is_empty() {
-        let empty = Paragraph::new("(empty)").block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_style(border_style)
-                .title(title),
-        );
+        let empty = Paragraph::new("(empty)")
+            .wrap(Wrap { trim: true })
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(border_style)
+                    .title(title),
+            );
         frame.render_widget(empty, area);
         return;
     }
@@ -53,6 +55,7 @@ pub fn render(
                 .border_style(border_style)
                 .title(title),
         )
+        // Applies the background color/bolding to the selected item.
         .highlight_style(theme::selection())
         .highlight_symbol("  ");
 

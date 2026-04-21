@@ -14,6 +14,6 @@ pub fn render(frame: &mut Frame, area: Rect, app: &App) {
         Some(app.selected),
         app.scroll,
         false,
-        app.focus == PaneFocus::Left,
+        app.focus == PaneFocus::Current,
     );
 }

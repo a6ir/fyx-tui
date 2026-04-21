@@ -1,38 +1,31 @@
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
 pub struct UiLayout {
-    pub left: Rect,
-    pub right: Rect,
+    pub topbar: Rect,
+    pub shortcuts: Rect,
+    pub current: Rect,
     pub status: Rect,
-    pub command: Option<Rect>,
 }
 
-pub fn split(area: Rect, show_command: bool) -> UiLayout {
-    let vertical = if show_command {
-        Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Min(1), Constraint::Length(1), Constraint::Length(1)])
-            .split(area)
-    } else {
-        Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Min(1), Constraint::Length(1)])
-            .split(area)
-    };
+pub fn split(area: Rect) -> UiLayout {
+    let vertical = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(3), Constraint::Min(1), Constraint::Length(1)])
+        .split(area);
 
-    let main = vertical[0];
-    let status = vertical[1];
-    let command = if show_command { Some(vertical[2]) } else { None };
+    let topbar = vertical[0];
+    let main = vertical[1];
+    let status = vertical[2];
 
-    let columns = Layout::default()
+    let horizontal = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
         .split(main);
 
     UiLayout {
-        left: columns[0],
-        right: columns[1],
+        topbar,
+        shortcuts: horizontal[0],
+        current: horizontal[1],
         status,
-        command,
     }
 }
