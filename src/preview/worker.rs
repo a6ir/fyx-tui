@@ -13,6 +13,7 @@ pub struct PreviewRequest {
 #[derive(Debug, Clone)]
 pub struct PreviewResponse {
     pub token: u64,
+    pub path: PathBuf,
     pub content: String,
 }
 
@@ -25,6 +26,7 @@ pub fn start_worker() -> (Sender<PreviewRequest>, Receiver<PreviewResponse>) {
             let content = render::render_preview(&request.path);
             let _ = tx_res.send(PreviewResponse {
                 token: request.token,
+                path: request.path,
                 content,
             });
         }

@@ -16,10 +16,12 @@ pub fn handle_mouse(
 ) -> Result<()> {
     match mouse.kind {
         MouseEventKind::ScrollDown => {
+            app.is_scrolling = true;
             state::move_selection(app, 1);
             state::request_preview(app, ctx);
         }
         MouseEventKind::ScrollUp => {
+            app.is_scrolling = true;
             state::move_selection(app, -1);
             state::request_preview(app, ctx);
         }

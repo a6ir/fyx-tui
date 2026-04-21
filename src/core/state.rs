@@ -13,6 +13,7 @@ pub fn refresh_directory(app: &mut App) -> Result<()> {
     app.full_entries = app.current.clone();
     app.filtered = app.full_entries.clone();
     app.search_query.clear();
+    app.last_previewed = None;
 
     app.parent = if let Some(parent) = app.cwd.parent() {
         dir::read_entries(parent).unwrap_or_default()
@@ -93,10 +94,16 @@ pub fn request_preview(app: &mut App, ctx: &AppContext) {
 
     let Some(path) = selected_path(app) else {
         app.preview = String::from("(empty directory)");
+        app.last_previewed = None;
         return;
     };
 
+    if app.last_previewed.as_ref() == Some(&path) {
+        return;
+    }
+
     app.preview_token = app.preview_token.wrapping_add(1);
+    app.last_previewed = Some(path.clone());
     let _ = ctx.preview_req_tx.send(PreviewRequest {
         token: app.preview_token,
         path,
@@ -105,7 +112,14 @@ pub fn request_preview(app: &mut App, ctx: &AppContext) {
 
 pub fn drain_preview(app: &mut App, ctx: &AppContext) {
     while let Ok(message) = ctx.preview_res_rx.try_recv() {
-        if app.preview_enabled && message.token == app.preview_token {
+        if app.is_scrolling {
+            continue;
+        }
+
+        if app.preview_enabled
+            && message.token == app.preview_token
+            && app.last_previewed.as_ref() == Some(&message.path)
+        {
             app.preview = message.content;
         }
     }

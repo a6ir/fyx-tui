@@ -1,5 +1,7 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
-use crossterm::event::Event as CrosstermEvent;
+use crossterm::event::{Event as CrosstermEvent, KeyCode, KeyEventKind, MouseEventKind};
 use ratatui::layout::Rect;
 
 use crate::{
@@ -10,9 +12,9 @@ use crate::{
         mode::Mode,
         state,
     },
-    input::{keymap, mouse},
+    input::mouse,
     search,
-    ui::layout,
+    ui::{layout, panes::shortcuts},
 };
 
 pub fn handle_input(
@@ -21,108 +23,104 @@ pub fn handle_input(
     event: CrosstermEvent,
     area: Rect,
 ) -> Result<()> {
-    let ui_layout = layout::split(area, matches!(app.mode, Mode::Command | Mode::Search));
+    let ui_layout = layout::split(area);
 
     match event {
-        CrosstermEvent::Key(key) => {
-            let action = keymap::map_key(key);
-            match app.mode {
-                Mode::Normal => handle_normal_mode(app, ctx, action)?,
-                Mode::Search => handle_search_mode(app, ctx, action),
-                Mode::Command => handle_command_mode(app, ctx, action)?,
-            }
-        }
+        CrosstermEvent::Key(key) if key.kind == KeyEventKind::Press => match app.mode {
+            Mode::Normal => handle_normal_mode(app, ctx, key.code)?,
+            Mode::Search => handle_search_mode(app, ctx, key.code),
+            Mode::Command => handle_command_mode(app, ctx, key.code)?,
+        },
         CrosstermEvent::Mouse(mouse_event) => {
-            if app.focus == PaneFocus::Left {
-                mouse::handle_mouse(app, ctx, mouse_event, ui_layout.left)?;
+            if matches!(mouse_event.kind, MouseEventKind::Down(_)) {
+                if point_in_rect(mouse_event.column, mouse_event.row, ui_layout.shortcuts) {
+                    app.focus = PaneFocus::Shortcuts;
+                } else if point_in_rect(mouse_event.column, mouse_event.row, ui_layout.current) {
+                    app.focus = PaneFocus::Current;
+                }
+            }
+
+            if app.focus == PaneFocus::Current {
+                mouse::handle_mouse(app, ctx, mouse_event, ui_layout.current)?;
             }
         }
         CrosstermEvent::Resize(_, _) => {}
         _ => {}
     }
 
-    let viewport_rows = ui_layout.left.height.saturating_sub(2) as usize;
+    let viewport_rows = ui_layout.current.height.saturating_sub(2) as usize;
     state::sync_scroll(app, viewport_rows);
     Ok(())
 }
 
-fn handle_normal_mode(app: &mut App, ctx: &AppContext, action: keymap::KeyAction) -> Result<()> {
-    match action {
-        keymap::KeyAction::SwitchFocus => {
+fn handle_normal_mode(app: &mut App, ctx: &AppContext, code: KeyCode) -> Result<()> {
+    match code {
+        KeyCode::Tab => {
             app.focus = match app.focus {
-                PaneFocus::Left => PaneFocus::Right,
-                PaneFocus::Right => PaneFocus::Left,
+                PaneFocus::Shortcuts => PaneFocus::Current,
+                PaneFocus::Current => PaneFocus::Shortcuts,
             };
-            return Ok(());
         }
-        keymap::KeyAction::Char('p') => {
-            toggle_preview(app, ctx);
-            return Ok(());
-        }
-        keymap::KeyAction::StartSearch => {
-            app.pending_g = false;
+        KeyCode::Char('p') => toggle_preview(app, ctx),
+        KeyCode::Char('/') => {
             search::state::enter_search_mode(app);
             state::request_preview(app, ctx);
-            return Ok(());
         }
-        keymap::KeyAction::StartCommand => {
-            app.pending_g = false;
+        KeyCode::Char(':') => {
             app.mode = Mode::Command;
             app.command_buffer.clear();
-            return Ok(());
         }
-        keymap::KeyAction::Char('q') => {
-            app.running = false;
-            return Ok(());
-        }
-        _ => {}
+        KeyCode::Char('q') => app.running = false,
+        _ => match app.focus {
+            PaneFocus::Current => handle_current_pane_normal(app, ctx, code)?,
+            PaneFocus::Shortcuts => handle_shortcuts_pane_normal(app, ctx, code)?,
+        },
     }
 
-    match app.focus {
-        PaneFocus::Left => handle_left_pane_normal_mode(app, ctx, action),
-        PaneFocus::Right => handle_right_pane_normal_mode(app, action),
-    }
+    Ok(())
 }
 
-fn handle_left_pane_normal_mode(
-    app: &mut App,
-    ctx: &AppContext,
-    action: keymap::KeyAction,
-) -> Result<()> {
+fn handle_current_pane_normal(app: &mut App, ctx: &AppContext, code: KeyCode) -> Result<()> {
     let mut refresh_preview = false;
 
-    match action {
-        keymap::KeyAction::MoveDown => {
+    match code {
+        KeyCode::Char('j') => {
             app.pending_g = false;
+            app.is_scrolling = true;
             state::move_selection(app, 1);
             refresh_preview = true;
         }
-        keymap::KeyAction::MoveUp => {
+        KeyCode::Char('k') => {
             app.pending_g = false;
+            app.is_scrolling = true;
             state::move_selection(app, -1);
             refresh_preview = true;
         }
-        keymap::KeyAction::Enter => {
+        KeyCode::Char('l') | KeyCode::Enter => {
             app.pending_g = false;
             if state::enter_selected(app)? {
                 app.status = format!("entered {}", app.cwd.display());
+                app.last_previewed = None;
                 refresh_preview = true;
             }
         }
-        keymap::KeyAction::Parent => {
+        KeyCode::Char('h') => {
             app.pending_g = false;
             if state::go_parent(app)? {
                 app.status = format!("parent {}", app.cwd.display());
+                app.last_previewed = None;
                 refresh_preview = true;
             }
         }
-        keymap::KeyAction::JumpBottom => {
+        KeyCode::Char('G') => {
             app.pending_g = false;
+            app.is_scrolling = true;
             state::jump_bottom(app);
             refresh_preview = true;
         }
-        keymap::KeyAction::Char('g') => {
+        KeyCode::Char('g') => {
             if app.pending_g {
+                app.is_scrolling = true;
                 state::jump_top(app);
                 refresh_preview = true;
                 app.pending_g = false;
@@ -142,60 +140,89 @@ fn handle_left_pane_normal_mode(
     Ok(())
 }
 
-fn handle_right_pane_normal_mode(app: &mut App, action: keymap::KeyAction) -> Result<()> {
-    if matches!(action, keymap::KeyAction::Parent) {
-        app.status = String::from("Switch to left pane (Tab) for navigation");
+fn handle_shortcuts_pane_normal(app: &mut App, ctx: &AppContext, code: KeyCode) -> Result<()> {
+    let max_index = shortcuts::shortcuts().len().saturating_sub(1);
+
+    match code {
+        KeyCode::Char('j') => {
+            app.shortcuts_selected = (app.shortcuts_selected + 1).min(max_index);
+        }
+        KeyCode::Char('k') => {
+            app.shortcuts_selected = app.shortcuts_selected.saturating_sub(1);
+        }
+        KeyCode::Char('l') | KeyCode::Enter => {
+            if let Some(target) = shortcut_target(app.shortcuts_selected) {
+                if target.exists() && target.is_dir() {
+                    app.cwd = target;
+                    state::refresh_directory(app)?;
+                    app.last_previewed = None;
+                    state::request_preview(app, ctx);
+                    app.status = format!("entered {}", app.cwd.display());
+                    app.focus = PaneFocus::Current;
+                } else {
+                    app.status = String::from("shortcut path unavailable");
+                }
+            }
+        }
+        KeyCode::Char('h') => {
+            if state::go_parent(app)? {
+                app.last_previewed = None;
+                state::request_preview(app, ctx);
+                app.status = format!("parent {}", app.cwd.display());
+            }
+        }
+        _ => {}
     }
 
-    app.pending_g = false;
     Ok(())
 }
 
-fn handle_search_mode(app: &mut App, ctx: &AppContext, action: keymap::KeyAction) {
+fn handle_search_mode(app: &mut App, ctx: &AppContext, code: KeyCode) {
     let mut refresh_preview = false;
 
-    match action {
-        keymap::KeyAction::Escape => {
+    match code {
+        KeyCode::Esc => {
             search::state::cancel_search(app);
             refresh_preview = true;
         }
-        keymap::KeyAction::Backspace => {
+        KeyCode::Backspace => {
             search::state::backspace(app);
             refresh_preview = true;
         }
-        keymap::KeyAction::Char(ch) => {
-            search::state::push_char(app, ch);
+        KeyCode::Enter => {
+            search::state::submit_search(app);
             refresh_preview = true;
         }
-        keymap::KeyAction::Submit => {
-            search::state::submit_search(app);
+        KeyCode::Char(ch) => {
+            search::state::push_char(app, ch);
             refresh_preview = true;
         }
         _ => {}
     }
 
     if refresh_preview {
+        app.last_previewed = None;
         state::request_preview(app, ctx);
     }
 }
 
-fn handle_command_mode(app: &mut App, ctx: &AppContext, action: keymap::KeyAction) -> Result<()> {
-    match action {
-        keymap::KeyAction::Escape => {
+fn handle_command_mode(app: &mut App, ctx: &AppContext, code: KeyCode) -> Result<()> {
+    match code {
+        KeyCode::Esc => {
             app.mode = Mode::Normal;
             app.command_buffer.clear();
         }
-        keymap::KeyAction::Backspace => {
+        KeyCode::Backspace => {
             app.command_buffer.pop();
         }
-        keymap::KeyAction::Char(ch) => {
-            app.command_buffer.push(ch);
-        }
-        keymap::KeyAction::Submit => {
+        KeyCode::Enter => {
             let parsed = commands::parser::parse_command(&app.command_buffer);
             commands::executor::execute(app, ctx, parsed)?;
             app.mode = Mode::Normal;
             app.command_buffer.clear();
+        }
+        KeyCode::Char(ch) => {
+            app.command_buffer.push(ch);
         }
         _ => {}
     }
@@ -207,10 +234,21 @@ fn toggle_preview(app: &mut App, ctx: &AppContext) {
     app.preview_enabled = !app.preview_enabled;
 
     if app.preview_enabled {
+        app.last_previewed = None;
         state::request_preview(app, ctx);
         app.status = String::from("preview enabled");
     } else {
         app.preview = String::from("Preview disabled. Press 'p' to enable.");
+        app.last_previewed = None;
         app.status = String::from("preview disabled");
     }
+}
+
+fn shortcut_target(index: usize) -> Option<PathBuf> {
+    let home = std::env::var("HOME").ok().map(PathBuf::from)?;
+    shortcuts::shortcut_path(index, &home)
+}
+
+fn point_in_rect(x: u16, y: u16, rect: Rect) -> bool {
+    x >= rect.x && x < rect.x + rect.width && y >= rect.y && y < rect.y + rect.height
 }

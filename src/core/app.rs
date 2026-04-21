@@ -10,8 +10,8 @@ pub struct ClickState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PaneFocus {
-    Left,
-    Right,
+    Shortcuts,
+    Current,
 }
 
 pub struct App {
@@ -35,9 +35,12 @@ pub struct App {
     pub pending_g: bool,
     pub running: bool,
     pub last_click: Option<ClickState>,
+    pub shortcuts_selected: usize,
 
     pub preview_token: u64,
     pub preview_enabled: bool,
+    pub last_previewed: Option<PathBuf>,
+    pub is_scrolling: bool,
 }
 
 impl App {
@@ -52,15 +55,18 @@ impl App {
             selected: 0,
             scroll: 0,
             mode: Mode::Normal,
-            focus: PaneFocus::Left,
+            focus: PaneFocus::Current,
             status: String::from("ready"),
             search_query: String::new(),
             command_buffer: String::new(),
             pending_g: false,
             running: true,
             last_click: None,
+            shortcuts_selected: 0,
             preview_token: 0,
             preview_enabled: true,
+            last_previewed: None,
+            is_scrolling: false,
         }
     }
 }
